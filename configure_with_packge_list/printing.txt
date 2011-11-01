@@ -1,0 +1,23 @@
+#defaults read com.apple.print.PrintingPrefs
+#UseLastPrinterAsCurrentPrinter = 0;
+
+# starting point not complete - other factors are involved. Also these settings may only be available on a local user bases - changing them host wide seems to not have an affect on the individual users settings.
+
+default_queue_name="WVCopier-Student"
+
+# Commands for setting OS X default printer
+
+/usr/libexec/PlistBuddy /Library/Preferences/com.apple.print.PrintingPrefs.plist -c "Add kLocationHistoryArrayKeyTMP Array"
+/usr/libexec/PlistBuddy /Library/Preferences/com.apple.print.PrintingPrefs.plist -c "Add kLocationHistoryArrayKeyTMP:0 Dict"
+/usr/libexec/PlistBuddy /Library/Preferences/com.apple.print.PrintingPrefs.plist -c "Add kLocationHistoryArrayKeyTMP:0:kLocationNetworkKey String"
+/usr/libexec/PlistBuddy /Library/Preferences/com.apple.print.PrintingPrefs.plist -c "Set kLocationHistoryArrayKeyTMP:0:kLocationNetworkKey `netstat -nr | grep '^default' | head -n1 | awk '{print $2}'`"
+/usr/libexec/PlistBuddy /Library/Preferences/com.apple.print.PrintingPrefs.plist -c "Add kLocationHistoryArrayKeyTMP:0:kLocationPrinterIDKey String"
+/usr/libexec/PlistBuddy /Library/Preferences/com.apple.print.PrintingPrefs.plist -c "Set kLocationHistoryArrayKeyTMP:0:kLocationPrinterIDKey ${default_queue_name}"
+
+/usr/libexec/PlistBuddy /Library/Preferences/com.apple.print.PrintingPrefs.plist -c "Add UseLastPrinterAsCurrentPrinter bool"
+/usr/libexec/PlistBuddy /Library/Preferences/com.apple.print.PrintingPrefs.plist -c "Set UseLastPrinterAsCurrentPrinter 0"
+
+# Get default router IP
+# netstat -nr | grep '^default' | head -n1 | awk '{print $2}'
+
+

@@ -1,0 +1,7 @@
+# Exmaple Configurartion File (for configure_with_package_list.bash) - you may also use enviroment varibles to configure the settings.
+
+package_download_directory="http://example.server.com/setup_data/individual_configuration_packags"
+download_directory="/tmp/packages_to_install"
+execute_unknowen_file_types="NO"
+print_report="YES"
+
