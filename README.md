@@ -23,7 +23,7 @@ Usage :
     
 (5) Execute the configure_with_package_list.bash script and pass
     in the installation configuration file as the first argument.
-    An example of this is provided below :
+    Example below :
 
     configure_with_package_list.bash /path/to/computer_setup.txt
 
