@@ -20,11 +20,11 @@ Usage :
     a file with a list of items to install or execute. An example
     file is : ./example_setups_configurations/computer_setup.txt
     
-(5) Execute the confugre_with_packages_list.bash script and pass
+(5) Execute the configure_with_package_list.bash script and pass
     in the installation configuration file as the first argument.
     An example of this is provided below :
 
-    confugre_with_packages_list.bash /path/to/computer_setup.txt
+    configure_with_package_list.bash /path/to/computer_setup.txt
 
 (6) Items specified within the installation configuration file 
     should now be installed on the system.
