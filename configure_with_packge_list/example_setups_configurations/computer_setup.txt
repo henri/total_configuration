@@ -2,15 +2,15 @@
 
 # base packages
 additemtodock.dmg
-installpkg_v0.1.1.dmg
+installpkg_v0.1.2.dmg
 
 # dock setup
 setup_dock_hooks.dmg 
 
 # install print queues
-/printers/create_printers/MainOffice.dmg
-/printers/create_printers/BigBen.dmg
-/printers/create_printers/AntMay.dmg
+printers/create_printers/MainOffice.dmg
+printers/create_printers/BigBen.dmg
+printers/create_printers/AntMay.dmg
 
 # set the default print queue
 printers/set_default_printers/MainOffice.dmg

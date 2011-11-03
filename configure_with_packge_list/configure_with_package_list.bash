@@ -10,7 +10,8 @@
 # 1.0 : Initial release.
 # 1.1 : Added basic support of arbitrary execution of downloads.
 # 1.2 : Checks the version of installpkg when dealing with .dmg downlods.
-# 1.3 : Basic support for configuration via environment variables
+# 1.3 : Basic support for configuration via environment variables.
+# 1.4 : Minor bug fixes.
 
 # script parent directory
 parent_directory_path=`dirname "$0"`
@@ -82,27 +83,40 @@ function install_package {
 	current_package_download_dest_path="${download_directory}/${current_pacakge_to_install_name}"
 
 	# Download the package
+	#echo "downloading : ${download_url}"
 	curl "${download_url}" -o "${current_package_download_dest_path}" 2> /dev/null
 	
-	# Check the install was succesful
+	# Check the download was succesful
 	if [ $? != 0 ] ; then 
+		echo ""
 		echo "ERROR! Unable to download package : ${download_url}"
+		echo ""
 		((num_unsuccesful_packages_downloaded_and_installed+1))
+		rm -r "${current_package_download_dest_path}"
 		return -1
 	fi
 	
 	# Determin the download files .extension (suffix)
 	download_suffix=`echo "${current_package_download_dest_path##*.}"`
 
+	
+
 	# If download is .pkg, .mpkg or .dmg then install using installpkg
 	if [ ".${download_suffix}" == ".dmg" ] || [ ".${download_suffix}" == ".pkg" ] || [ ".${download_suffix}" == ".mpkg" ] ; then 
 		
 		# Check the intalled version of installpkg will support installation of .dmg wrapped packages.
 		if [ ".${download_suffix}" == ".dmg" ] ; then
-			instaled_pkg_version=`grep "# Version " /sbin/installpkg | awk '{print $3}' | awk -F "." '{print $3}'`
-			if [ $instaled_pkg_version -lt 8 ] ; then
-				echo "ERROR! This version of installpkg will not support the installation of .dmg files"
-				return -1
+			instaled_pkg_first_version=`grep "# Version " /sbin/installpkg | awk '{print $3}' | awk -F "." '{print $1}'`
+			instaled_pkg_second_version=`grep "# Version " /sbin/installpkg | awk '{print $3}' | awk -F "." '{print $2}'`
+			instaled_pkg_third_version=`grep "# Version " /sbin/installpkg | awk '{print $3}' | awk -F "." '{print $3}'`
+			if [ $instaled_pkg_first_version -le 0 ] ; then
+				if [ $instaled_pkg_second_version -le 0 ] ; then 
+					if [ $instaled_pkg_third_version -le 7 ] ; then 
+						echo "ERROR! This version of installpkg will not support the installation of .dmg files"
+						num_unsuccesful_packages_downloaded_and_installed=$((num_unsuccesful_packages_downloaded_and_installed+1))
+						return -1
+					fi
+				fi
 			fi
 		fi
 		
@@ -186,6 +200,7 @@ if [ "${print_report}" = "YES" ] ; then
 	fi
 	if [ $num_unsuccesful_packages_downloaded_and_installed -gt 0 ] ; then
 		echo "WARNING! : Problems were encountered with [${num_unsuccesful_packages_downloaded_and_installed}] packages"
+		exit -1
 	fi
 fi
 
