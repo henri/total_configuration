@@ -15,8 +15,20 @@ printers/create_printers/AntMay.dmg
 # set the default print queue
 printers/set_default_printers/MainOffice.dmg
 
-# try to name the machine (direct script execution)
+# direct execution of scripts
 # enable via cwpl.configuration or as an environment variable
-rename_based_upon_mac_address.rb
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+# try to name the machine 
+scripts/rename_based_upon_mac_address.rb
+
+# mount a remote repository via a bash script (could use fuse, afp, smb, etc)
+scripts/mount_installers_repository.bash
+
+# install a locally available .dmg file
+file:///Volumes/installers/vlc/vlc-1.1.11.dmg
+
+# we also support realitive paths 
+file://../local_installers/applications/firefox/firefox_v8.dmg
 
 

@@ -12,9 +12,15 @@
 # 1.2 : Checks the version of installpkg when dealing with .dmg downlods.
 # 1.3 : Basic support for configuration via environment variables.
 # 1.4 : Minor bug fixes.
+# 1.5 : Added support for installing files which are already accesible from the mounted file system. ( eg : file:// )
 
 # script parent directory
 parent_directory_path=`dirname "$0"`
+cd "${parent_directory_path}"
+if [ $? != 0 ] ; then 
+	echo "ERROR! : Unable to switch to this scripts parent directory."
+	exit -128
+fi
 
 # load configuration file if present
 configuration_file_default_path="${parent_directory_path}/cwpl.configuration"
@@ -44,6 +50,7 @@ current_package_to_install=""
 current_pacakge_to_install_name=""
 current_package_download_dest_path=""
 currentUser=`whoami`
+current_package_to_install_is_already_availible_via_filesystem=""
 
 function pre_flight_check {
 	# Check we are running as root
@@ -64,43 +71,63 @@ function pre_flight_check {
 
 function install_package {
 	
+	# Ensure that the default is to download a file each time this funion is called (this is paranoid).
+	current_package_to_install_is_already_availible_via_filesystem="NO"
+
 	# Calculate the name of the pacakge to install
 	current_pacakge_to_install_name=`basename "${current_package_to_install}"`
 	if [ "$current_pacakge_to_install_name" == "" ] ; then
 		return -1
 	fi
 	
-	# Check if this packge listed has a specific download url provided
-	first_seven_charcters=`echo "${current_package_to_install}" cut -c 1-7`
-	if [ "${first_seven_charcters}" != "http://" ] ; then
+	# Check if this packge listed has a specific download url provided or a spcific file system path provided
+	first_seven_charcters="`echo "${current_package_to_install}" | cut -c 1-7`"
+	if [ "${first_seven_charcters}" != "http://" ] && [ "${first_seven_charcters}" != "file://" ] ; then
 		download_url=$package_download_directory/${current_package_to_install}
-	else 
-		download_url="${current_package_to_install}"
+	else
+		if [ "${first_seven_charcters}" == "http://" ] ; then
+			download_url="${current_package_to_install}"
+		fi
+		if [ "${first_seven_charcters}" == "file://" ] ; then
+			current_package_to_install_is_already_availible_via_filesystem="YES"
+			download_url="`echo \"${current_package_to_install}\" | cut -c 8-`"
+		fi
 	fi
-	
 
-	# Set download location 
-	current_package_download_dest_path="${download_directory}/${current_pacakge_to_install_name}"
-
-	# Download the package
-	#echo "downloading : ${download_url}"
-	curl "${download_url}" -o "${current_package_download_dest_path}" 2> /dev/null
-	
-	# Check the download was succesful
-	if [ $? != 0 ] ; then 
-		echo ""
-		echo "ERROR! Unable to download package : ${download_url}"
-		echo ""
-		((num_unsuccesful_packages_downloaded_and_installed+1))
-		rm -r "${current_package_download_dest_path}"
-		return -1
+	# Either download the file or check it is locally availible
+	if [ "${current_package_to_install_is_already_availible_via_filesystem}" == "NO" ] ; then
+		
+		# Set download location 
+		current_package_download_dest_path="${download_directory}/${current_pacakge_to_install_name}"
+		
+		# Download the package
+		#echo "downloading : ${download_url}"
+		curl "${download_url}" -o "${current_package_download_dest_path}" 2> /dev/null	
+		# Check the download was succesful
+		if [ $? != 0 ] ; then 
+			echo ""
+			echo "ERROR! Unable to download package : ${download_url}"
+			echo ""
+			((num_unsuccesful_packages_downloaded_and_installed+1))
+			rm -r "${current_package_download_dest_path}"
+			return -1
+		fi
+	else
+		# Check it exists
+		if [ -e "${download_url}" ] ; then
+				current_package_download_dest_path="${download_url}"
+		else
+				echo ""
+				echo "ERROR! Unable to locate this local package : ${download_url}"
+				echo ""
+				((num_unsuccesful_packages_downloaded_and_installed+1))
+				return -1
+		fi
 	fi
 	
 	# Determin the download files .extension (suffix)
 	download_suffix=`echo "${current_package_download_dest_path##*.}"`
-
 	
-
 	# If download is .pkg, .mpkg or .dmg then install using installpkg
 	if [ ".${download_suffix}" == ".dmg" ] || [ ".${download_suffix}" == ".pkg" ] || [ ".${download_suffix}" == ".mpkg" ] ; then 
 		
@@ -130,8 +157,10 @@ function install_package {
 			return -1
 		fi
 		
-		# Remove the installer
-		rm -r "${current_package_download_dest_path}"
+		# Remove the installer - provided it was downloaded
+		if [ "${current_package_to_install_is_already_availible_via_filesystem}" == "NO" ] ; then
+			rm -r "${current_package_download_dest_path}"
+		fi
 		
 		return 0
 	fi
@@ -156,8 +185,10 @@ function install_package {
 			return -1
 		fi
 		
-		# Remove the installer
-		rm -r "${current_package_download_dest_path}"
+		# Remove the installer - provided it was downloaded
+		if [ "${current_package_to_install_is_already_availible_via_filesystem}" == "NO" ] ; then
+			rm -r "${current_package_download_dest_path}"
+		fi
 		
 		return 0
 	fi
