@@ -1,6 +1,6 @@
 #!/bin/bash
-
-# This script is licenced under the GNU GPL v3
+	
+# This script is licensed under the GNU GPL v3
 # http://www.gnu.org/licenses/gpl-3.0.txt
 # Copyright Henri Shustak 2011
 
@@ -12,7 +12,9 @@
 # 1.2 : Checks the version of installpkg when dealing with .dmg downlods.
 # 1.3 : Basic support for configuration via environment variables.
 # 1.4 : Minor bug fixes.
-# 1.5 : Added support for installing files which are already accesible from the mounted file system. ( eg : file:// )
+# 1.5 : Added support for installing files which are already accessible from the mounted file system. ( eg : file:// )
+# 1.6 : Basic check for installpkg when installing packages. Various other minor improvements and bug fixes.
+# 1.7 : Installs InstallPKG if the install package is available within the same directory as the script and it is required.
 
 # script parent directory
 parent_directory_path=`dirname "$0"`
@@ -51,6 +53,9 @@ current_pacakge_to_install_name=""
 current_package_download_dest_path=""
 currentUser=`whoami`
 current_package_to_install_is_already_availible_via_filesystem=""
+installpkg_path="`which installpkg`"
+installpkg_pacakage_name="InstallPKG.pkg"
+installpkg_installation_attempted="NO"
 
 function pre_flight_check {
 	# Check we are running as root
@@ -80,7 +85,7 @@ function install_package {
 		return -1
 	fi
 	
-	# Check if this packge listed has a specific download url provided or a spcific file system path provided
+	# Check if this package listed has a specific download url provided or a specific file system path provided
 	first_seven_charcters="`echo "${current_package_to_install}" | cut -c 1-7`"
 	if [ "${first_seven_charcters}" != "http://" ] && [ "${first_seven_charcters}" != "file://" ] ; then
 		download_url=$package_download_directory/${current_package_to_install}
@@ -94,7 +99,7 @@ function install_package {
 		fi
 	fi
 
-	# Either download the file or check it is locally availible
+	# Either download the file or check it is locally available
 	if [ "${current_package_to_install_is_already_availible_via_filesystem}" == "NO" ] ; then
 		
 		# Set download location 
@@ -125,17 +130,40 @@ function install_package {
 		fi
 	fi
 	
-	# Determin the download files .extension (suffix)
+	# Determine the download files .extension (suffix)
 	download_suffix=`echo "${current_package_download_dest_path##*.}"`
 	
 	# If download is .pkg, .mpkg or .dmg then install using installpkg
 	if [ ".${download_suffix}" == ".dmg" ] || [ ".${download_suffix}" == ".pkg" ] || [ ".${download_suffix}" == ".mpkg" ] ; then 
 		
-		# Check the intalled version of installpkg will support installation of .dmg wrapped packages.
+		# Install installpkg if required, installer is available in the same directory as the script and an installation attempt has not been attempted on this execution of the script.
+		if [ "${installpkg_path}" == "" ] &&  [ "${installpkg_installation_attempted}" == "NO" ] && [ -e "${parent_directory_path}/${installpkg_pacakage_name}" ] ; then
+			echo "Installing InstallPKG onto this system…"
+			installer -pkg "${parent_directory_path}/${installpkg_pacakage_name}" -target / > /dev/null
+			installpkg_installation_return_code=$?
+			installpkg_installation_attempted="YES"
+			installpkg_path="`which installpkg`"
+			if [ "${installpkg_path}" != "" ] && [ $installpkg_installation_return_code == 0 ] ; then
+				echo "    InstallPKG was installed successfully."
+			else
+				echo "    ERRROR! : During InstallPKG automatic installation."
+				echo "              Manual installation of InstallPKG onto this system is recommended."
+			fi
+		fi
+
+		# check that installpkg is installed
+		if [ "${installpkg_path}" == "" ] ; then
+			echo "ERROR! : InstallPKG is not installed on this system."
+			echo "         Unable to install : ${download_url}"
+			num_unsuccesful_packages_downloaded_and_installed=$((num_unsuccesful_packages_downloaded_and_installed+1))
+			return -1
+		fi
+
+		# Check the installed version of installpkg will support installation of .dmg wrapped packages.
 		if [ ".${download_suffix}" == ".dmg" ] ; then
-			instaled_pkg_first_version=`grep "# Version " /sbin/installpkg | awk '{print $3}' | awk -F "." '{print $1}'`
-			instaled_pkg_second_version=`grep "# Version " /sbin/installpkg | awk '{print $3}' | awk -F "." '{print $2}'`
-			instaled_pkg_third_version=`grep "# Version " /sbin/installpkg | awk '{print $3}' | awk -F "." '{print $3}'`
+			instaled_pkg_first_version=`grep "# Version " "${installpkg_path}" | awk '{print $3}' | awk -F "." '{print $1}'`
+			instaled_pkg_second_version=`grep "# Version " "${installpkg_path}" | awk '{print $3}' | awk -F "." '{print $2}'`
+			instaled_pkg_third_version=`grep "# Version " "${installpkg_path}" | awk '{print $3}' | awk -F "." '{print $3}'`
 			if [ $instaled_pkg_first_version -le 0 ] ; then
 				if [ $instaled_pkg_second_version -le 0 ] ; then 
 					if [ $instaled_pkg_third_version -le 7 ] ; then 
@@ -146,12 +174,20 @@ function install_package {
 				fi
 			fi
 		fi
-		
-		# Insall the package
-		installpkg -i "${current_package_download_dest_path}" >/dev/null
-		
+
+		# install the package		
+		if [ ".${download_suffix}" == ".dmg" ] ; then
+			# install the dmg wrapped package
+			installpkg -i "${current_package_download_dest_path}" >/dev/null
+			package_installation_result=$?
+		else
+			# directly install the package or meta-package
+			installpkg "${current_package_download_dest_path}" >/dev/null
+			package_installation_result=$?
+		fi
+
 		# Check the install went okay
-		if [ $? != 0 ] ; then
+		if [ $package_installation_result != 0 ] ; then
 			echo "ERROR! Installing package : ${download_url}"
 			num_unsuccesful_packages_downloaded_and_installed=$((num_unsuccesful_packages_downloaded_and_installed+1))
 			return -1
