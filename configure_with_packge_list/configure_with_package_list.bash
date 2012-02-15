@@ -15,6 +15,7 @@
 # 1.5 : Added support for installing files which are already accessible from the mounted file system. ( eg : file:// )
 # 1.6 : Basic check for installpkg when installing packages. Various other minor improvements and bug fixes.
 # 1.7 : Installs InstallPKG if the install package is available within the same directory as the script and it is required.
+# 1.8 : Bug fix, relation to issue relating when path to total configuration direcotry contains spaces.
 
 # script parent directory
 parent_directory_path=`dirname "$0"`
